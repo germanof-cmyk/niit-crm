@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { Lead, LeadStatus, COUNTRIES, ORIGINS, INTERESTS, PIPELINE_COLUMNS } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,9 +10,10 @@ import {
   Building2, MapPin, Target, Clock,
   Globe, MessageCircle, Mail, Trash2,
   Check, AlertCircle, Lightbulb, Calendar,
-  CheckCircle2, Circle,
+  CheckCircle2, Circle, ArrowLeft, Save,
 } from 'lucide-react';
 import { STATUS_SOLID } from '@/components/ui/StatusBadge';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -20,6 +22,8 @@ interface LeadFormProps {
   onSubmit: (data: Omit<Lead, 'id' | 'order' | 'created_at' | 'updated_at'>) => void;
   onCancel: () => void;
   onDelete?: () => void;
+  /** When provided, renders the full page header (back link + eyebrow + title + progress). */
+  backHref?: string;
 }
 
 /* ─── Constants ─────────────────────────────────────────── */
@@ -150,7 +154,7 @@ function PillPicker<T extends string>({
   renderOption?: (o: T, selected: boolean) => React.ReactNode;
 }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth" style={{ scrollSnapType: 'x mandatory' }}>
+    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollSnapType: 'x mandatory' }}>
       {options.map(opt => {
         const selected = value === opt;
         const key = getKey(opt);
@@ -164,7 +168,7 @@ function PillPicker<T extends string>({
               'cursor-pointer transition-all duration-150 border',
               selected ? 'shadow-sm' : 'border-niit-line bg-white hover:border-niit-navy/30'
             )}
-            style={selected ? selectedStyle(opt) : { color: '#64748B' }}
+            style={{ scrollSnapAlign: 'start', ...(selected ? selectedStyle(opt) : { color: '#64748B' }) }}
           >
             {renderOption ? renderOption(opt, selected) : getLabel(opt)}
           </button>
@@ -178,13 +182,20 @@ function LeadPreview({ form }: { form: ReturnType<typeof useFormState> }) {
   const hasDate = !!form.next_action_date;
   return (
     <div className="bg-white rounded-xl border border-niit-line overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(28,64,97,0.06)' }}>
-      <div className="px-3 pt-3">
+      <div className="px-3 pt-3 pb-1">
+        <StatusBadge status={form.status} className="mb-2" />
         <p className="font-extrabold text-[13px] leading-tight" style={{ color: form.company ? '#1C4061' : '#94A3B8' }}>
-          {form.company || <em className="font-normal">Empresa não preenchida</em>}
+          {form.company || <em className="font-normal text-[#94A3B8]">—</em>}
         </p>
         <p className="text-[12px] mt-0.5" style={{ color: '#64748B' }}>
-          {form.contact_name || <em className="font-normal opacity-60">—</em>}
-          {form.role && <span className="opacity-70"> · {form.role}</span>}
+          {form.contact_name ? (
+            <>
+              {form.contact_name}
+              {form.role && <span className="opacity-70"> · {form.role}</span>}
+            </>
+          ) : (
+            <em className="font-normal opacity-60">—</em>
+          )}
         </p>
         <div className="flex flex-wrap gap-1 mt-2">
           <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold" style={{ background: '#F4F6F9', color: '#1C4061' }}>
@@ -255,7 +266,7 @@ function RequiredChecklist({ form }: { form: ReturnType<typeof useFormState> }) 
       <div className="mt-4 pt-3 border-t border-niit-line">
         <p className="text-xs font-semibold" style={{ color: allDone ? '#14A05A' : '#C24E12' }}>
           {allDone
-            ? '✓ 6 de 6 obrigatórios preenchidos'
+            ? `✓ ${fields.length} de ${fields.length} obrigatórios preenchidos`
             : `Faltam ${fields.length - filled} obrigatório${fields.length - filled > 1 ? 's' : ''}`}
         </p>
       </div>
@@ -302,8 +313,20 @@ function useFormState(initial?: Partial<Lead>) {
   };
 }
 
+/* ─── Progress bar ───────────────────────────────────────── */
+function ProgressBar({ pct }: { pct: number }) {
+  return (
+    <div className="h-[2px] rounded-full" style={{ background: '#E3E8EF' }}>
+      <div
+        className="h-[2px] rounded-full transition-all duration-300"
+        style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #F7661E, #FB8A4B)' }}
+      />
+    </div>
+  );
+}
+
 /* ─── Main component ─────────────────────────────────────── */
-export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: LeadFormProps) {
+export default function LeadForm({ initial, onSubmit, onCancel, onDelete, backHref }: LeadFormProps) {
   const form = useFormState(initial);
   const [errors, setErrors] = useState<{ company?: string; contact_name?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
@@ -423,25 +446,52 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
       )}
 
       <form ref={formRef} onSubmit={handleSubmit} noValidate>
-        {/* Progress bar */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold" style={{ color: '#64748B' }}>
-              {filledCount} de {totalFields} campos preenchidos
-            </span>
-            <span className="text-xs font-bold" style={{ color: '#F7661E' }}>{progressPct}%</span>
-          </div>
-          <div className="h-1.5 rounded-full" style={{ background: '#E3E8EF' }}>
-            <div
-              className="h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #F7661E, #FB8A4B)' }}
-            />
-          </div>
-        </div>
 
-        {/* 12-col grid */}
+        {/* ── Page header (full) — shown when backHref is provided ── */}
+        {backHref ? (
+          <div className="mb-8">
+            <Link
+              href={backHref}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold mb-5 transition-colors hover:text-niit-navy"
+              style={{ color: '#64748B' }}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para leads
+            </Link>
+
+            <div className="flex items-end justify-between gap-4 mb-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-1" style={{ color: '#F7661E' }}>
+                  {isEditing ? 'EDITAR LEAD' : 'NOVO LEAD'}
+                </p>
+                <h1 className="text-2xl font-extrabold leading-tight" style={{ color: '#1C4061' }}>
+                  {isEditing ? (initial?.company || 'Editar lead') : 'Cadastrar lead'}
+                </h1>
+              </div>
+              <span className="text-sm font-semibold shrink-0 pb-0.5" style={{ color: '#94A3B8' }}>
+                {filledCount} de {totalFields} campos preenchidos
+              </span>
+            </div>
+
+            <ProgressBar pct={progressPct} />
+          </div>
+        ) : (
+          /* ── Minimal progress bar — for edit tab context ── */
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold" style={{ color: '#64748B' }}>
+                {filledCount} de {totalFields} campos preenchidos
+              </span>
+              <span className="text-xs font-bold" style={{ color: '#F7661E' }}>{progressPct}%</span>
+            </div>
+            <ProgressBar pct={progressPct} />
+          </div>
+        )}
+
+        {/* ── 12-col grid ── */}
         <div className="grid grid-cols-12 gap-6">
-          {/* ── Left column: sections ── */}
+
+          {/* ── Left column: 4 section cards ── */}
           <div className="col-span-12 lg:col-span-8 space-y-4">
 
             {/* Section 01: Identificação */}
@@ -495,7 +545,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
               </div>
             </SectionCard>
 
-            {/* Section 02: Localização */}
+            {/* Section 02: Localização e contato */}
             <SectionCard
               number="02"
               icon={MapPin}
@@ -559,7 +609,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
               </div>
             </SectionCard>
 
-            {/* Section 03: Qualificação */}
+            {/* Section 03: Qualificação comercial */}
             <SectionCard
               number="03"
               icon={Target}
@@ -567,9 +617,9 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
               subtitle="Como está o relacionamento e o que o lead quer"
               complete={sec3Done}
             >
-              <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Status pills */}
-                <div>
+                <div className="col-span-2">
                   <FieldLabel required>Status</FieldLabel>
                   <PillPicker
                     options={PIPELINE_COLUMNS.map(c => c.id) as LeadStatus[]}
@@ -595,7 +645,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
                 </div>
 
                 {/* Origin pills */}
-                <div>
+                <div className="col-span-2">
                   <FieldLabel required>Origem do lead</FieldLabel>
                   <PillPicker
                     options={ORIGINS as Lead['origin'][]}
@@ -612,7 +662,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
                 </div>
 
                 {/* Interest pills */}
-                <div>
+                <div className="col-span-2">
                   <FieldLabel required>Interesse principal</FieldLabel>
                   <PillPicker
                     options={INTERESTS as Lead['interest'][]}
@@ -629,7 +679,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
                 </div>
 
                 {/* Responsável */}
-                <div>
+                <div className="col-span-2">
                   <FieldLabel>Responsável interno</FieldLabel>
                   <InputWithIcon
                     value={form.responsible}
@@ -680,24 +730,24 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
           </div>
 
           {/* ── Right column: sidebar ── */}
-          <div className="col-span-12 lg:col-span-4 space-y-4">
-            <div className="lg:sticky lg:top-6 space-y-4">
+          <div className="col-span-12 lg:col-span-4">
+            <div className="lg:sticky lg:top-24 space-y-4">
 
-              {/* Preview card */}
+              {/* Card 1: Preview */}
               <div className="bg-white rounded-2xl border border-niit-line shadow-card p-5">
                 <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#94A3B8' }}>
                   PRÉVIA DO CARD
                 </p>
                 <p className="text-xs font-semibold mb-3" style={{ color: '#1C4061' }}>
-                  Como o lead vai aparecer
+                  Como o lead vai aparecer no kanban
                 </p>
                 <LeadPreview form={form} />
               </div>
 
-              {/* Checklist */}
+              {/* Card 2: Checklist */}
               <RequiredChecklist form={form} />
 
-              {/* Tips — only for new leads */}
+              {/* Card 3: Dicas — só em novo lead */}
               {!isEditing && (
                 <div
                   className="rounded-2xl p-5"
@@ -713,10 +763,15 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
                 </div>
               )}
 
-              {/* Shortcut hint */}
+              {/* Keyboard shortcut hint */}
               <p className="text-center text-[11px]" style={{ color: '#94A3B8' }}>
-                Dica: <kbd className="px-1 py-0.5 rounded text-[10px] font-semibold" style={{ background: '#F4F6F9', color: '#64748B', border: '1px solid #E3E8EF' }}>Ctrl</kbd> + <kbd className="px-1 py-0.5 rounded text-[10px] font-semibold" style={{ background: '#F4F6F9', color: '#64748B', border: '1px solid #E3E8EF' }}>Enter</kbd> para salvar
+                Dica:{' '}
+                <kbd className="px-1 py-0.5 rounded text-[10px] font-semibold" style={{ background: '#F4F6F9', color: '#64748B', border: '1px solid #E3E8EF' }}>Ctrl</kbd>
+                {' '}+{' '}
+                <kbd className="px-1 py-0.5 rounded text-[10px] font-semibold" style={{ background: '#F4F6F9', color: '#64748B', border: '1px solid #E3E8EF' }}>Enter</kbd>
+                {' '}para salvar
               </p>
+
             </div>
           </div>
         </div>
@@ -724,14 +779,14 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
         {/* Spacer for fixed footer */}
         <div className="h-24" />
 
-        {/* Fixed action bar */}
+        {/* ── Fixed action bar ── */}
         <div
           className="fixed bottom-0 left-0 right-0 lg:left-[240px] z-20 border-t"
           style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderColor: '#E3E8EF' }}
         >
           <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
             {/* Delete */}
-            <div>
+            <div className="shrink-0">
               {onDelete ? (
                 <button
                   type="button"
@@ -770,16 +825,17 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete }: Lead
                 type="submit"
                 className={cn(
                   'flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-extrabold text-white transition-all duration-150',
-                  !allRequired ? 'opacity-60 cursor-not-allowed' : 'btn-orange'
+                  !allRequired ? 'opacity-60' : 'btn-orange'
                 )}
                 style={allRequired ? {} : { background: '#F7661E', boxShadow: 'none' }}
               >
-                <Check className="w-4 h-4" />
+                {isEditing ? <Save className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                 {isEditing ? 'Salvar alterações' : 'Criar lead'}
               </button>
             </div>
           </div>
         </div>
+
       </form>
     </>
   );
