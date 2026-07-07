@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* NIIT Brand — CSS Variables */
+    --background: 216 20% 96%;      /* #F4F6F9 */
+    --foreground: 210 35% 16%;      /* #1B2A3A */
+    --card: 0 0% 100%;
+    --card-foreground: 210 35% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 35% 16%;
+    --primary: 210 55% 24%;         /* #1C4061 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 20% 94%;
+    --secondary-foreground: 210 35% 16%;
+    --muted: 216 20% 96%;
+    --muted-foreground: 215 14% 45%; /* #64748B */
+    --accent: 19 93% 54%;            /* #F7661E */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;        /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 24% 88%;           /* #E3E8EF */
+    --input: 214 24% 88%;
+    --ring: 19 93% 54%;              /* orange focus ring */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    background-color: #F4F6F9;
+    color: #1B2A3A;
+    font-family: var(--font-montserrat), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Kanban scrollbar */
+.kanban-scroll { overflow-x: auto; overflow-y: hidden; }
+.kanban-scroll::-webkit-scrollbar { height: 6px; }
+.kanban-scroll::-webkit-scrollbar-track { background: #E3E8EF; border-radius: 9999px; }
+.kanban-scroll::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 9999px; }
+
+/* Sidebar gradient */
+.sidebar-gradient {
+  background: linear-gradient(180deg, #1C4061 0%, #132D46 55%, #0E2236 100%);
+}
+
+/* Orange CTA button */
+.btn-orange {
+  background: #F7661E;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(247,102,30,0.40);
+  transition: all 150ms ease;
+}
+.btn-orange:hover {
+  background: #FB8A4B;
+  box-shadow: 0 8px 20px rgba(247,102,30,0.45);
+  transform: translateY(-1px);
+}
+
+/* Input focus ring orange */
+input:focus-visible,
+textarea:focus-visible,
+[data-slot="input"]:focus-visible {
+  outline: none;
+  border-color: #F7661E !important;
+  box-shadow: 0 0 0 3px rgba(247,102,30,0.20) !important;
+}
