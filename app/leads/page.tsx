@@ -5,12 +5,46 @@ import { useLeads } from '@/lib/hooks';
 import AppShell from '@/components/layout/AppShell';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import { Plus, Search, ChevronRight, AlertTriangle, Users } from 'lucide-react';
+import { Plus, Search, ChevronRight, AlertTriangle, Users, AlertCircle, RefreshCw } from 'lucide-react';
 import { isPast, isToday } from 'date-fns';
 import StatusBadge from '@/components/ui/StatusBadge';
 
+function TableSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden border border-niit-line shadow-card">
+      <div className="h-10 bg-niit-navy/90 rounded-t-2xl" />
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="flex gap-4 px-4 py-3 border-t border-niit-line">
+          <div className="h-4 w-32 bg-slate-100 animate-pulse rounded" />
+          <div className="h-4 w-24 bg-slate-100 animate-pulse rounded" />
+          <div className="h-4 w-16 bg-slate-100 animate-pulse rounded" />
+          <div className="h-4 w-20 bg-slate-100 animate-pulse rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50 mb-4">
+      <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+      <p className="text-sm font-semibold text-red-700 flex-1">
+        Não foi possível carregar os leads. Tente novamente.
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:text-red-900 transition-colors"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
 export default function LeadsPage() {
-  const { leads } = useLeads();
+  const { leads, isLoading, error, mutate } = useLeads();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -32,11 +66,10 @@ export default function LeadsPage() {
           <div>
             <h1 className="text-2xl font-extrabold" style={{ color: '#1C4061' }}>Leads</h1>
             <p className="text-sm mt-1" style={{ color: '#64748B' }}>
-              {leads.length} leads cadastrados
+              {isLoading ? 'Carregando…' : `${leads.length} leads cadastrados`}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Search */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#64748B' }} />
               <Input
@@ -56,8 +89,11 @@ export default function LeadsPage() {
           </div>
         </div>
 
-        {/* Empty state */}
-        {leads.length === 0 ? (
+        {error && <ErrorCard onRetry={mutate} />}
+
+        {isLoading ? (
+          <TableSkeleton />
+        ) : leads.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center py-16 rounded-2xl bg-white"
             style={{ border: '2px dashed #D5DCE6' }}
@@ -74,10 +110,7 @@ export default function LeadsPage() {
             <p className="text-sm mb-5" style={{ color: '#64748B' }}>
               Comece cadastrando seu primeiro lead no sistema
             </p>
-            <Link
-              href="/leads/novo"
-              className="btn-orange px-5 py-2 rounded-xl text-sm"
-            >
+            <Link href="/leads/novo" className="btn-orange px-5 py-2 rounded-xl text-sm">
               Cadastrar primeiro lead
             </Link>
           </div>

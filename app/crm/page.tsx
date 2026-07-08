@@ -1,15 +1,51 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useLeads } from '@/lib/hooks';
+import { useLeads, reorderLeads } from '@/lib/hooks';
 import AppShell from '@/components/layout/AppShell';
 import KanbanBoard from '@/components/crm/KanbanBoard';
 import FilterBar, { Filters } from '@/components/crm/FilterBar';
 import { isPast, isToday } from 'date-fns';
-import { Lead } from '@/lib/types';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { PIPELINE_COLUMNS } from '@/lib/types';
+
+function KanbanSkeleton() {
+  return (
+    <div className="flex gap-4 h-full overflow-x-auto pb-4">
+      {PIPELINE_COLUMNS.map(col => (
+        <div key={col.id} className="shrink-0 w-[260px]">
+          <div className="h-7 w-36 rounded-lg bg-slate-100 animate-pulse mb-3" />
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50 mb-4">
+      <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+      <p className="text-sm font-semibold text-red-700 flex-1">
+        Não foi possível carregar os leads. Tente novamente.
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:text-red-900 transition-colors"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Recarregar
+      </button>
+    </div>
+  );
+}
 
 export default function CrmPage() {
-  const { leads, updateLead, updateLeadsOrder } = useLeads();
+  const { leads, isLoading, error, mutate } = useLeads();
   const [filters, setFilters] = useState<Filters>({
     country: '', status: '', origin: '', interest: '', responsible: '', overdue: '',
   });
@@ -34,8 +70,12 @@ export default function CrmPage() {
     });
   }, [leads, filters]);
 
-  const handleUpdateLead = (id: string, data: Partial<Lead>) => {
-    updateLead(id, data);
+  const handleDrop = async (updates: { id: string; status: string; order: number }[]) => {
+    try {
+      await reorderLeads(updates);
+    } finally {
+      await mutate();
+    }
   };
 
   return (
@@ -47,7 +87,7 @@ export default function CrmPage() {
             <div>
               <h1 className="text-2xl font-extrabold" style={{ color: '#1C4061' }}>Pipeline CRM</h1>
               <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>
-                {filtered.length} leads no pipeline
+                {isLoading ? 'Carregando…' : `${filtered.length} leads no pipeline`}
               </p>
             </div>
           </div>
@@ -62,11 +102,12 @@ export default function CrmPage() {
 
         {/* Kanban */}
         <div className="flex-1 overflow-hidden p-4 lg:p-6">
-          <KanbanBoard
-            leads={filtered}
-            onUpdateLead={handleUpdateLead}
-            onUpdateOrder={updateLeadsOrder}
-          />
+          {error && <ErrorCard onRetry={mutate} />}
+          {isLoading ? (
+            <KanbanSkeleton />
+          ) : (
+            <KanbanBoard leads={filtered} onDrop={handleDrop} />
+          )}
         </div>
       </div>
     </AppShell>

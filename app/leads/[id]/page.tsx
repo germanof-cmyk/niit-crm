@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useLeads, useInteractions } from '@/lib/hooks';
+import { useLead, updateLead, deleteLead, createInteraction, deleteInteraction } from '@/lib/hooks';
 import AppShell from '@/components/layout/AppShell';
 import LeadForm from '@/components/leads/LeadForm';
 import InteractionForm from '@/components/leads/InteractionForm';
-import { Lead } from '@/lib/types';
-import { ArrowLeft, ExternalLink, MessageSquare, Mail, Phone, Trash2, ChevronRight } from 'lucide-react';
+import { Lead, Interaction } from '@/lib/types';
+import { ArrowLeft, ExternalLink, MessageSquare, Mail, Phone, Trash2, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,20 +18,50 @@ const TYPE_ICONS: Record<string, string> = {
   WhatsApp: '💬', 'E-mail': '✉️', Ligação: '📞', Reunião: '🤝', Feira: '🏢', Outro: '📝',
 };
 
+function DetailSkeleton() {
+  return (
+    <div className="px-6 lg:px-8 pt-6 pb-4 max-w-3xl mx-auto space-y-4">
+      <div className="h-4 w-32 bg-slate-100 animate-pulse rounded" />
+      <div className="h-28 bg-slate-100 animate-pulse rounded-2xl" />
+      <div className="h-10 w-48 bg-slate-100 animate-pulse rounded-xl" />
+    </div>
+  );
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { leads, updateLead, deleteLead } = useLeads();
-  const { interactions, createInteraction, deleteInteraction } = useInteractions(params.id as string);
+  const id = params.id as string;
+
+  const { lead, interactions, isLoading, error, mutate } = useLead(id);
   const [activeTab, setActiveTab] = useState<'historico' | 'editar'>('historico');
+  const [saving, setSaving] = useState(false);
 
-  const lead = leads.find(l => l.id === params.id);
+  if (isLoading) {
+    return <AppShell><DetailSkeleton /></AppShell>;
+  }
 
-  if (!lead) {
+  if (error || !lead) {
     return (
       <AppShell>
-        <div className="p-8">
-          <p style={{ color: '#64748B' }}>Lead não encontrado.</p>
+        <div className="p-8 max-w-3xl mx-auto">
+          {error ? (
+            <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50 mb-4">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+              <p className="text-sm font-semibold text-red-700 flex-1">
+                Não foi possível carregar o lead. Tente novamente.
+              </p>
+              <button
+                onClick={() => mutate()}
+                className="flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:text-red-900"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Recarregar
+              </button>
+            </div>
+          ) : (
+            <p style={{ color: '#64748B' }}>Lead não encontrado.</p>
+          )}
           <Link href="/leads">
             <Button variant="outline" className="mt-4 rounded-xl border-niit-line">
               Voltar para leads
@@ -42,16 +72,31 @@ export default function LeadDetailPage() {
     );
   }
 
-  const handleUpdate = (data: Omit<Lead, 'id' | 'order' | 'created_at' | 'updated_at'>) => {
-    updateLead(lead.id, data);
-    router.push('/leads');
+  const handleUpdate = async (data: Omit<Lead, 'id' | 'order' | 'created_at' | 'updated_at'>) => {
+    setSaving(true);
+    try {
+      await updateLead(lead.id, data);
+      router.push('/leads');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm(`Deseja excluir o lead "${lead.company}"? Esta ação não pode ser desfeita.`)) {
-      deleteLead(lead.id);
+      await deleteLead(lead.id);
       router.push('/leads');
     }
+  };
+
+  const handleAddInteraction = async (data: Omit<Interaction, 'id' | 'created_at'>) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { lead_id, ...rest } = data;
+    await createInteraction(lead.id, rest);
+  };
+
+  const handleDeleteInteraction = async (interactionId: string) => {
+    await deleteInteraction(interactionId, lead.id);
   };
 
   const sortedInteractions = [...interactions].sort(
@@ -60,7 +105,6 @@ export default function LeadDetailPage() {
 
   return (
     <AppShell>
-      {/* The outer container is NOT constrained so the edit form can go wide */}
       <div>
         {/* Header — always visible, constrained */}
         <div className="px-6 lg:px-8 pt-6 pb-4 max-w-3xl mx-auto">
@@ -141,7 +185,7 @@ export default function LeadDetailPage() {
             <div className="bg-white rounded-2xl border border-niit-line shadow-card p-5 mb-5">
               <InteractionForm
                 leadId={lead.id}
-                onSubmit={data => createInteraction(data)}
+                onSubmit={handleAddInteraction}
               />
             </div>
 
@@ -171,7 +215,7 @@ export default function LeadDetailPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => deleteInteraction(interaction.id)}
+                        onClick={() => handleDeleteInteraction(interaction.id)}
                         className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" style={{ color: '#94A3B8' }} />
@@ -204,6 +248,7 @@ export default function LeadDetailPage() {
               onSubmit={handleUpdate}
               onCancel={() => setActiveTab('historico')}
               onDelete={handleDelete}
+              saving={saving}
             />
           </div>
         )}

@@ -24,6 +24,8 @@ interface LeadFormProps {
   onDelete?: () => void;
   /** When provided, renders the full page header (back link + eyebrow + title + progress). */
   backHref?: string;
+  /** Shows a saving spinner on the submit button while the API round-trip is in progress. */
+  saving?: boolean;
 }
 
 /* ─── Constants ─────────────────────────────────────────── */
@@ -326,7 +328,7 @@ function ProgressBar({ pct }: { pct: number }) {
 }
 
 /* ─── Main component ─────────────────────────────────────── */
-export default function LeadForm({ initial, onSubmit, onCancel, onDelete, backHref }: LeadFormProps) {
+export default function LeadForm({ initial, onSubmit, onCancel, onDelete, backHref, saving = false }: LeadFormProps) {
   const form = useFormState(initial);
   const [errors, setErrors] = useState<{ company?: string; contact_name?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
@@ -823,14 +825,21 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete, backHr
               </button>
               <button
                 type="submit"
+                disabled={saving}
                 className={cn(
                   'flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-extrabold text-white transition-all duration-150',
-                  !allRequired ? 'opacity-60' : 'btn-orange'
+                  !allRequired || saving ? 'opacity-60' : 'btn-orange'
                 )}
-                style={allRequired ? {} : { background: '#F7661E', boxShadow: 'none' }}
+                style={allRequired && !saving ? {} : { background: '#F7661E', boxShadow: 'none' }}
               >
-                {isEditing ? <Save className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                {isEditing ? 'Salvar alterações' : 'Criar lead'}
+                {saving ? (
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : isEditing ? (
+                  <Save className="w-4 h-4" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {saving ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Criar lead'}
               </button>
             </div>
           </div>

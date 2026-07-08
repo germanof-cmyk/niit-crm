@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -24,13 +24,19 @@ import { useRouter } from 'next/navigation';
 
 interface KanbanBoardProps {
   leads: Lead[];
-  onUpdateLead: (id: string, data: Partial<Lead>) => void;
-  onUpdateOrder: (leads: Lead[]) => void;
+  onDrop: (updates: { id: string; status: string; order: number }[]) => Promise<void>;
 }
 
-export default function KanbanBoard({ leads, onUpdateLead, onUpdateOrder }: KanbanBoardProps) {
+export default function KanbanBoard({ leads, onDrop }: KanbanBoardProps) {
   const router = useRouter();
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Local optimistic state — updated during drag, synced from prop on server refresh
+  const [localLeads, setLocalLeads] = useState<Lead[]>(leads);
+
+  // Keep local in sync with server data (but not while dragging)
+  useEffect(() => {
+    if (!activeId) setLocalLeads(leads);
+  }, [leads, activeId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -39,14 +45,14 @@ export default function KanbanBoard({ leads, onUpdateLead, onUpdateOrder }: Kanb
   const leadsByStatus = useMemo(() => {
     const map: Record<LeadStatus, Lead[]> = {} as Record<LeadStatus, Lead[]>;
     PIPELINE_COLUMNS.forEach(col => {
-      map[col.id] = leads
+      map[col.id] = localLeads
         .filter(l => l.status === col.id)
         .sort((a, b) => a.order - b.order);
     });
     return map;
-  }, [leads]);
+  }, [localLeads]);
 
-  const activeLead = activeId ? leads.find(l => l.id === activeId) : null;
+  const activeLead = activeId ? localLeads.find(l => l.id === activeId) : null;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
@@ -56,53 +62,73 @@ export default function KanbanBoard({ leads, onUpdateLead, onUpdateOrder }: Kanb
     const { active, over } = event;
     if (!over) return;
 
-    const activeLeadItem = leads.find(l => l.id === active.id);
-    if (!activeLeadItem) return;
+    const activeItem = localLeads.find(l => l.id === active.id);
+    if (!activeItem) return;
 
-    // Check if dragging over a column (not a card)
     const overIsColumn = PIPELINE_COLUMNS.some(col => col.id === over.id);
-    const overLeadItem = leads.find(l => l.id === over.id);
+    const overItem = localLeads.find(l => l.id === over.id);
     const targetStatus = overIsColumn
       ? (over.id as LeadStatus)
-      : overLeadItem?.status;
+      : overItem?.status;
 
-    if (!targetStatus || activeLeadItem.status === targetStatus) return;
+    if (!targetStatus || activeItem.status === targetStatus) return;
 
-    // Update status when moving to a new column
-    onUpdateLead(activeLeadItem.id, { status: targetStatus });
+    // Optimistically update status in local state only — no API call here
+    setLocalLeads(prev =>
+      prev.map(l => l.id === activeItem.id ? { ...l, status: targetStatus } : l)
+    );
   }
 
-  function handleDragEnd(event: DragEndEvent) {
+  async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
+    if (!over) {
+      // Cancelled — reset local state to server state
+      setLocalLeads(leads);
+      return;
+    }
 
-    const activeLeadItem = leads.find(l => l.id === active.id);
-    if (!activeLeadItem) return;
+    const activeItem = localLeads.find(l => l.id === active.id);
+    if (!activeItem) return;
 
-    const overLeadItem = leads.find(l => l.id === over.id);
+    const overItem = localLeads.find(l => l.id === over.id);
     const overIsColumn = PIPELINE_COLUMNS.some(col => col.id === over.id);
-
     const targetStatus = overIsColumn
       ? (over.id as LeadStatus)
-      : overLeadItem?.status || activeLeadItem.status;
+      : (overItem?.status ?? activeItem.status);
 
-    if (activeLeadItem.status === targetStatus && !overIsColumn && overLeadItem) {
-      // Reorder within same column
-      const colLeads = leads
+    let finalLeads = localLeads;
+
+    // Reorder within same column
+    if (activeItem.status === targetStatus && !overIsColumn && overItem) {
+      const colLeads = localLeads
         .filter(l => l.status === targetStatus)
         .sort((a, b) => a.order - b.order);
+      const oldIdx = colLeads.findIndex(l => l.id === active.id);
+      const newIdx = colLeads.findIndex(l => l.id === over.id);
 
-      const oldIndex = colLeads.findIndex(l => l.id === active.id);
-      const newIndex = colLeads.findIndex(l => l.id === over.id);
+      if (oldIdx !== newIdx) {
+        const reordered = arrayMove(colLeads, oldIdx, newIdx).map((l, i) => ({ ...l, order: i }));
+        const reorderedMap = new Map(reordered.map(l => [l.id, l]));
+        finalLeads = localLeads.map(l => reorderedMap.get(l.id) ?? l);
+        setLocalLeads(finalLeads);
+      }
+    }
 
-      if (oldIndex !== newIndex) {
-        const reordered = arrayMove(colLeads, oldIndex, newIndex).map((l, i) => ({
-          ...l,
-          order: i,
-        }));
-        onUpdateOrder(reordered);
+    // Compute what changed vs the original server data
+    const serverMap = new Map(leads.map(l => [l.id, l]));
+    const changed = finalLeads.filter(l => {
+      const orig = serverMap.get(l.id);
+      return !orig || orig.status !== l.status || orig.order !== l.order;
+    });
+
+    if (changed.length > 0) {
+      try {
+        await onDrop(changed.map(({ id, status, order }) => ({ id, status, order })));
+      } catch {
+        // Rollback on error
+        setLocalLeads(leads);
       }
     }
   }

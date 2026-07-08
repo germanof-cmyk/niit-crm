@@ -5,8 +5,9 @@ import { useLeads } from '@/lib/hooks';
 import AppShell from '@/components/layout/AppShell';
 import { PIPELINE_COLUMNS } from '@/lib/types';
 import { isPast, isThisWeek, isToday } from 'date-fns';
-import { Users, CheckCircle2, AlertTriangle, Clock, Globe } from 'lucide-react';
+import { Users, CheckCircle2, AlertTriangle, Clock, Globe, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+
 const STATUS_SOLID: Record<string, string> = {
   novo_lead:           '#1C4061',
   contato_iniciado:    '#2E7CC4',
@@ -19,7 +20,7 @@ const STATUS_SOLID: Record<string, string> = {
 
 interface KpiProps {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
   iconBg: string;
   valueColor?: string;
@@ -58,8 +59,45 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+      <div className="h-8 w-48 bg-slate-100 animate-pulse rounded mb-2" />
+      <div className="h-4 w-64 bg-slate-100 animate-pulse rounded mb-8" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-20 bg-slate-100 animate-pulse rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-56 bg-slate-100 animate-pulse rounded-2xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 bg-red-50 mb-6">
+      <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+      <p className="text-sm font-semibold text-red-700 flex-1">
+        Não foi possível carregar os leads. Tente novamente.
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:text-red-900 transition-colors"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const { leads } = useLeads();
+  const { leads, isLoading, error, mutate } = useLeads();
 
   const stats = useMemo(() => {
     const byStatus: Record<string, number> = {};
@@ -85,6 +123,8 @@ export default function DashboardPage() {
 
   const maxCount = leads.length || 1;
 
+  if (isLoading) return <AppShell><DashboardSkeleton /></AppShell>;
+
   return (
     <AppShell>
       <div className="p-6 lg:p-8 max-w-6xl mx-auto">
@@ -95,6 +135,8 @@ export default function DashboardPage() {
             Visão geral do pipeline comercial NIIT
           </p>
         </div>
+
+        {error && <ErrorCard onRetry={mutate} />}
 
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
