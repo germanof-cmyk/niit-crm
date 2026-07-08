@@ -55,20 +55,15 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
     : density;
 
   /* ── Collapsed columns state ──────────────────── */
-  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set(DEFAULT_COLLAPSED);
+  const [collapsedColumns, setCollapsedColumns] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_COLLAPSED;
     try {
       const stored = localStorage.getItem('niit-crm-collapsed-columns');
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set(DEFAULT_COLLAPSED);
+      return stored === null ? DEFAULT_COLLAPSED : (JSON.parse(stored) as string[]);
     } catch {
-      return new Set(DEFAULT_COLLAPSED);
+      return DEFAULT_COLLAPSED;
     }
   });
-
-  // Persist collapsed columns to localStorage
-  useEffect(() => {
-    localStorage.setItem('niit-crm-collapsed-columns', JSON.stringify(Array.from(collapsedColumns)));
-  }, [collapsedColumns]);
 
   // Effective collapsed = user's set + screen-size overrides
   const effectiveCollapsed = useMemo<Set<string>>(() => {
@@ -80,10 +75,12 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
     return base;
   }, [collapsedColumns, screenWidth, mobileMode]);
 
-  const collapseColumn = (id: string) =>
-    setCollapsedColumns(prev => new Set(Array.from(prev).concat(id)));
-  const expandColumn = (id: string) =>
-    setCollapsedColumns(prev => { const n = new Set(Array.from(prev)); n.delete(id); return n; });
+  const toggleColumn = (id: string) =>
+    setCollapsedColumns(prev => {
+      const next = prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id];
+      localStorage.setItem('niit-crm-collapsed-columns', JSON.stringify(next));
+      return next;
+    });
 
   /* ── Auto-expand on drag hover ─────────────────── */
   const pendingExpandRef = useRef<{ status: string; timer: ReturnType<typeof setTimeout> } | null>(null);
@@ -146,7 +143,7 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
         pendingExpandRef.current = {
           status: targetStatus,
           timer: setTimeout(() => {
-            expandColumn(targetStatus);
+            toggleColumn(targetStatus);
             pendingExpandRef.current = null;
             setAutoExpandingCol(null);
           }, 400),
@@ -251,8 +248,8 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
                   leads={colLeads}
                   onClickLead={id => router.push(`/leads/${id}`)}
                   collapsed={isCollapsed}
-                  onCollapse={() => collapseColumn(col.id)}
-                  onExpand={() => expandColumn(col.id)}
+                  onCollapse={() => toggleColumn(col.id)}
+                  onExpand={() => toggleColumn(col.id)}
                   density={effectiveDensity}
                   autoExpanding={autoExpandingCol === col.id}
                 />
