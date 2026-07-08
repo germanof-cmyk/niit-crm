@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Lead {
+  id               String        @id @default(cuid())
+  company          String
+  contact_name     String
+  country          String
+  whatsapp         String?
+  email            String?
+  role             String?
+  city             String?
+  region           String?
+  website          String?
+  status           String
+  origin           String
+  interest         String
+  responsible      String?
+  next_action      String?
+  next_action_date DateTime?
+  technical_notes  String?
+  order            Int           @default(0)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+  interactions     Interaction[]
+
+  @@index([status, order])
+}
+
+model Interaction {
+  id          String   @id @default(cuid())
+  lead_id     String
+  date        DateTime
+  type        String
+  description String
+  next_step   String?
+  created_at  DateTime @default(now())
+  lead        Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
+}
