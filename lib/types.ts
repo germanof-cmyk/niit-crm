@@ -1,8 +1,8 @@
 export type LeadStatus =
-  | 'novo_lead'
-  | 'contato_iniciado'
-  | 'diagnostico_tecnico'
-  | 'proposta_enviada'
+  | 'novo'
+  | 'contato'
+  | 'diagnostico'
+  | 'proposta'
   | 'negociacao'
   | 'fechado'
   | 'perdido';
@@ -82,13 +82,13 @@ export interface Interaction {
 }
 
 export const PIPELINE_COLUMNS: { id: LeadStatus; label: string }[] = [
-  { id: 'novo_lead', label: 'Novo Lead' },
-  { id: 'contato_iniciado', label: 'Contato Iniciado' },
-  { id: 'diagnostico_tecnico', label: 'Diagnóstico Técnico' },
-  { id: 'proposta_enviada', label: 'Proposta Enviada' },
-  { id: 'negociacao', label: 'Negociação' },
-  { id: 'fechado', label: 'Fechado' },
-  { id: 'perdido', label: 'Perdido' },
+  { id: 'novo',        label: 'Novo Lead' },
+  { id: 'contato',     label: 'Contato Iniciado' },
+  { id: 'diagnostico', label: 'Diagnóstico Técnico' },
+  { id: 'proposta',    label: 'Proposta Enviada' },
+  { id: 'negociacao',  label: 'Negociação' },
+  { id: 'fechado',     label: 'Fechado' },
+  { id: 'perdido',     label: 'Perdido' },
 ];
 
 export const COUNTRIES: LeadCountry[] = [

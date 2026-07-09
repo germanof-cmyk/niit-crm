@@ -11,13 +11,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface ColumnDef { id: string; label: string }
 
 export const COLUMN_COLORS: Record<string, string> = {
-  novo_lead:           '#1C4061',
-  contato_iniciado:    '#2E7CC4',
-  diagnostico_tecnico: '#0E9AA7',
-  proposta_enviada:    '#6C5CE7',
-  negociacao:          '#F7661E',
-  fechado:             '#14A05A',
-  perdido:             '#94A3B8',
+  novo:        '#1C4061',
+  contato:     '#2E7CC4',
+  diagnostico: '#0E9AA7',
+  proposta:    '#6C5CE7',
+  negociacao:  '#F7661E',
+  fechado:     '#14A05A',
+  perdido:     '#94A3B8',
 };
 
 function SortableLeadCard({
@@ -63,9 +63,9 @@ function CollapsedColumn({
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col items-center rounded-xl shrink-0 overflow-hidden"
+      className="flex flex-col items-center rounded-xl overflow-hidden"
       style={{
-        width: 44,
+        width: '100%',
         background: autoExpanding ? '#E8EEF4' : '#EDF0F5',
         outline: isOver ? `2px dashed ${color}` : autoExpanding ? `2px dashed ${color}` : 'none',
         borderTop: `3px solid ${color}`,
@@ -129,11 +129,11 @@ function ExpandedColumn({
 
   return (
     <div
-      className="flex flex-col rounded-xl overflow-hidden shrink-0"
+      className="flex flex-col rounded-xl overflow-hidden"
       style={{
+        width: '100%',
         background: '#EDF0F5',
         outline: isOver ? `2px dashed #F7661E` : 'none',
-        width: density === 'compact' ? 208 : 240,
       }}
     >
       {/* Column header */}

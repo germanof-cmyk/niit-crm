@@ -30,13 +30,13 @@ interface LeadFormProps {
 
 /* ─── Constants ─────────────────────────────────────────── */
 const STATUS_PILL: Record<string, { color: string; bg: string }> = {
-  novo_lead:           { color: '#1C4061', bg: 'rgba(28,64,97,0.10)' },
-  contato_iniciado:    { color: '#2E7CC4', bg: 'rgba(46,124,196,0.10)' },
-  diagnostico_tecnico: { color: '#0E9AA7', bg: 'rgba(14,154,167,0.10)' },
-  proposta_enviada:    { color: '#6C5CE7', bg: 'rgba(108,92,231,0.10)' },
-  negociacao:          { color: '#F7661E', bg: 'rgba(247,102,30,0.10)' },
-  fechado:             { color: '#14A05A', bg: 'rgba(20,160,90,0.10)' },
-  perdido:             { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)' },
+  novo:        { color: '#1C4061', bg: 'rgba(28,64,97,0.10)' },
+  contato:     { color: '#2E7CC4', bg: 'rgba(46,124,196,0.10)' },
+  diagnostico: { color: '#0E9AA7', bg: 'rgba(14,154,167,0.10)' },
+  proposta:    { color: '#6C5CE7', bg: 'rgba(108,92,231,0.10)' },
+  negociacao:  { color: '#F7661E', bg: 'rgba(247,102,30,0.10)' },
+  fechado:     { color: '#14A05A', bg: 'rgba(20,160,90,0.10)' },
+  perdido:     { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)' },
 };
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -287,7 +287,7 @@ function useFormState(initial?: Partial<Lead>) {
   const [city, setCity] = useState(initial?.city || '');
   const [region, setRegion] = useState(initial?.region || '');
   const [website, setWebsite] = useState(initial?.website || '');
-  const [status, setStatus] = useState<LeadStatus>(initial?.status || 'novo_lead');
+  const [status, setStatus] = useState<LeadStatus>(initial?.status || 'novo');
   const [origin, setOrigin] = useState(initial?.origin || 'Feira');
   const [interest, setInterest] = useState(initial?.interest || 'Nitretação a plasma');
   const [responsible, setResponsible] = useState(initial?.responsible || '');
@@ -367,7 +367,7 @@ export default function LeadForm({ initial, onSubmit, onCancel, onDelete, backHr
       form.city !== (initial?.city || '') ||
       form.region !== (initial?.region || '') ||
       form.website !== (initial?.website || '') ||
-      form.status !== (initial?.status || 'novo_lead') ||
+      form.status !== (initial?.status || 'novo') ||
       form.origin !== (initial?.origin || 'Feira') ||
       form.interest !== (initial?.interest || 'Nitretação a plasma') ||
       form.responsible !== (initial?.responsible || '') ||

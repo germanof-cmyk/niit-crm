@@ -22,9 +22,14 @@ import KanbanColumn from './KanbanColumn';
 import LeadCard, { CardDensity } from '../leads/LeadCard';
 import { useRouter } from 'next/navigation';
 
-/* ── Columns that auto-collapse by default ─────── */
-const DEFAULT_COLLAPSED = ['fechado', 'perdido'];
-const EXTRA_COLLAPSED_LG = ['diagnostico_tecnico', 'proposta_enviada']; // <1024px
+/* ── Valid status IDs and responsive defaults ──── */
+const VALID_STATUS_IDS = ['novo', 'contato', 'diagnostico', 'proposta', 'negociacao', 'fechado', 'perdido'];
+
+function getDefaultCollapsed(width: number): string[] {
+  if (width < 768) return [];
+  if (width < 1280) return ['fechado', 'perdido', 'diagnostico', 'proposta'];
+  return ['fechado', 'perdido'];
+}
 
 interface KanbanBoardProps {
   leads: Lead[];
@@ -56,24 +61,26 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
 
   /* ── Collapsed columns state ──────────────────── */
   const [collapsedColumns, setCollapsedColumns] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_COLLAPSED;
+    if (typeof window === 'undefined') return getDefaultCollapsed(1920);
     try {
       const stored = localStorage.getItem('niit-crm-collapsed-columns');
-      return stored === null ? DEFAULT_COLLAPSED : (JSON.parse(stored) as string[]);
+      if (stored === null) {
+        const defaults = getDefaultCollapsed(window.innerWidth);
+        localStorage.setItem('niit-crm-collapsed-columns', JSON.stringify(defaults));
+        return defaults;
+      }
+      const parsed = JSON.parse(stored) as string[];
+      const cleaned = parsed.filter(id => VALID_STATUS_IDS.includes(id));
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem('niit-crm-collapsed-columns', JSON.stringify(cleaned));
+      }
+      return cleaned;
     } catch {
-      return DEFAULT_COLLAPSED;
+      return getDefaultCollapsed(window.innerWidth);
     }
   });
 
-  // Effective collapsed = user's set + screen-size overrides
-  const effectiveCollapsed = useMemo<Set<string>>(() => {
-    if (mobileMode) return new Set<string>();
-    const base = new Set(collapsedColumns);
-    if (screenWidth < 1024) {
-      EXTRA_COLLAPSED_LG.forEach(id => base.add(id));
-    }
-    return base;
-  }, [collapsedColumns, screenWidth, mobileMode]);
+  const collapsedSet = useMemo(() => new Set(collapsedColumns), [collapsedColumns]);
 
   const toggleColumn = (id: string) =>
     setCollapsedColumns(prev => {
@@ -136,7 +143,7 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
     if (!targetStatus) return;
 
     // Auto-expand collapsed column after 400ms hover
-    if (effectiveCollapsed.has(targetStatus)) {
+    if (!mobileMode && collapsedSet.has(targetStatus)) {
       if (!pendingExpandRef.current || pendingExpandRef.current.status !== targetStatus) {
         clearPendingExpand();
         setAutoExpandingCol(targetStatus);
@@ -211,9 +218,6 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
     }
   }
 
-  /* ── Column width for mobile (no collapse, 240px) ─ */
-  const colStyle = mobileMode ? { width: 240, flexShrink: 0 } : {};
-
   return (
     <DndContext
       sensors={sensors}
@@ -228,7 +232,7 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
       >
         {PIPELINE_COLUMNS.map(col => {
           const colLeads = leadsByStatus[col.id] || [];
-          const isCollapsed = !mobileMode && effectiveCollapsed.has(col.id);
+          const isCollapsed = !mobileMode && collapsedSet.has(col.id);
           return (
             <SortableContext
               key={col.id}
@@ -239,8 +243,9 @@ export default function KanbanBoard({ leads, onDrop, density = 'compact' }: Kanb
               {/* Wrapper for width transition */}
               <div
                 style={{
+                  width: mobileMode ? 240 : isCollapsed ? 44 : (effectiveDensity === 'compact' ? 208 : 240),
                   transition: 'width 200ms ease-out',
-                  ...colStyle,
+                  flexShrink: 0,
                 }}
               >
                 <KanbanColumn

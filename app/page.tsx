@@ -9,13 +9,13 @@ import { Users, CheckCircle2, AlertTriangle, Clock, Globe, AlertCircle, RefreshC
 import Link from 'next/link';
 
 const STATUS_SOLID: Record<string, string> = {
-  novo_lead:           '#1C4061',
-  contato_iniciado:    '#2E7CC4',
-  diagnostico_tecnico: '#0E9AA7',
-  proposta_enviada:    '#6C5CE7',
-  negociacao:          '#F7661E',
-  fechado:             '#14A05A',
-  perdido:             '#94A3B8',
+  novo:        '#1C4061',
+  contato:     '#2E7CC4',
+  diagnostico: '#0E9AA7',
+  proposta:    '#6C5CE7',
+  negociacao:  '#F7661E',
+  fechado:     '#14A05A',
+  perdido:     '#94A3B8',
 };
 
 interface KpiProps {
