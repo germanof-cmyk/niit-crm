@@ -5,7 +5,8 @@ import { useLeads } from '@/lib/hooks';
 import AppShell from '@/components/layout/AppShell';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import { Plus, Search, ChevronRight, AlertTriangle, Users, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Search, ChevronRight, AlertTriangle, Users, AlertCircle, RefreshCw, Upload, Download } from 'lucide-react';
+import { exportLeadsToCsv } from '@/lib/csv-export';
 import { isPast, isToday } from 'date-fns';
 import StatusBadge from '@/components/ui/StatusBadge';
 
@@ -46,6 +47,13 @@ function ErrorCard({ onRetry }: { onRetry: () => void }) {
 export default function LeadsPage() {
   const { leads, isLoading, error, mutate } = useLeads();
   const [search, setSearch] = useState('');
+  const [exportToast, setExportToast] = useState(false);
+
+  const handleExport = () => {
+    exportLeadsToCsv(filtered);
+    setExportToast(true);
+    setTimeout(() => setExportToast(false), 3000);
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -61,6 +69,17 @@ export default function LeadsPage() {
   return (
     <AppShell>
       <div className="p-6 lg:p-8">
+        {/* Export toast */}
+        {exportToast && (
+          <div
+            className="fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-white shadow-xl"
+            style={{ background: '#132D46', border: '1px solid rgba(247,102,30,0.3)' }}
+          >
+            <Download className="w-4 h-4" style={{ color: '#F7661E' }} />
+            Arquivo pronto. Verifique seus downloads.
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -69,7 +88,7 @@ export default function LeadsPage() {
               {isLoading ? 'Carregando…' : `${leads.length} leads cadastrados`}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#64748B' }} />
               <Input
@@ -79,6 +98,23 @@ export default function LeadsPage() {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
+            <button
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors hover:bg-niit-surface disabled:opacity-40"
+              style={{ borderColor: '#D5DCE6', color: '#64748B' }}
+            >
+              <Download className="w-4 h-4" />
+              Exportar
+            </button>
+            <Link
+              href="/leads/importar"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors hover:bg-niit-surface"
+              style={{ borderColor: '#1C4061', color: '#1C4061' }}
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Link>
             <Link
               href="/leads/novo"
               className="btn-orange flex items-center gap-2 px-4 py-2 rounded-xl text-sm"
